@@ -15,12 +15,12 @@ export const extractTranslations = async (
   modelId: string = 'gpt-3.5-turbo'
 ): Promise<{ [key: string]: string }> => {
   if (!apiKey) {
-    throw new Error('API key is required for translations');
+    throw new Error('Se requiere clave API para las traducciones');
   }
 
   const model = AVAILABLE_MODELS.find(m => m.id === modelId);
   if (!model) {
-    throw new Error('Invalid model selected');
+    throw new Error('Modelo seleccionado inválido');
   }
 
   const provider = createTranslationProvider(model.provider, apiKey);
@@ -34,12 +34,12 @@ export const extractMultiLanguageTranslations = async (
   modelId: string = 'gpt-3.5-turbo'
 ): Promise<MultiLanguageTranslations> => {
   if (!apiKey) {
-    throw new Error('API key is required for translations');
+    throw new Error('Se requiere clave API para las traducciones');
   }
 
   const model = AVAILABLE_MODELS.find(m => m.id === modelId);
   if (!model) {
-    throw new Error('Invalid model selected');
+    throw new Error('Modelo seleccionado inválido');
   }
 
   const provider = createTranslationProvider(model.provider, apiKey);

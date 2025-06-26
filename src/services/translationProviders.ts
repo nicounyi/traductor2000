@@ -33,35 +33,35 @@ export const AVAILABLE_MODELS: AIModel[] = [
     id: "gpt-3.5-turbo",
     name: "GPT-3.5 Turbo",
     maxTokens: 4000,
-    description: "Good balance between performance and cost",
+    description: "Buena relación entre rendimiento y costo",
     provider: "openai"
   },
   {
     id: "gpt-3.5-turbo-16k",
     name: "GPT-3.5 Turbo 16K",
     maxTokens: 16000,
-    description: "Handles longer texts, more expensive",
+    description: "Maneja textos más largos, más costoso",
     provider: "openai"
   },
   {
     id: "gpt-4",
     name: "GPT-4",
     maxTokens: 8000,
-    description: "Most capable model, highest quality, most expensive",
+    description: "Modelo más capaz, mayor calidad, más costoso",
     provider: "openai"
   },
   {
     id: "gpt-4-turbo-preview",
     name: "GPT-4 Turbo",
     maxTokens: 128000,
-    description: "Latest GPT-4 version, handles very long texts",
+    description: "Última versión de GPT-4, maneja textos muy largos",
     provider: "openai"
   },
   {
     id: "gemini-2.0-flash",
     name: "Gemini 2.0 Flash",
     maxTokens: 30720,
-    description: "Google's fastest model, optimized for quick responses",
+    description: "Modelo más rápido de Google, optimizado para respuestas rápidas",
     provider: "google"
   }
 ];
@@ -111,9 +111,9 @@ IMPORTANT: Only return the translated text as values, do not include the origina
       if (error?.status === 429) {
         const isRateLimit = error.message?.toLowerCase().includes('rate limit');
         if (isRateLimit) {
-          throw new Error('OpenAI rate limit exceeded. Try again in a minute or switch to a different provider.');
+          throw new Error('Límite de velocidad de OpenAI excedido. Intenta de nuevo en un minuto o cambia a un proveedor diferente.');
         } else {
-          throw new Error('OpenAI quota exceeded. Consider switching to a different provider or check your billing status.');
+          throw new Error('Cuota de OpenAI excedida. Considera cambiar a un proveedor diferente o verifica tu estado de facturación.');
         }
       }
       throw error;
@@ -172,9 +172,9 @@ IMPORTANT:
       if (error?.status === 429) {
         const isRateLimit = error.message?.toLowerCase().includes('rate limit');
         if (isRateLimit) {
-          throw new Error('OpenAI rate limit exceeded. Try again in a minute or switch to a different provider.');
+          throw new Error('Límite de velocidad de OpenAI excedido. Intenta de nuevo en un minuto o cambia a un proveedor diferente.');
         } else {
-          throw new Error('OpenAI quota exceeded. Consider switching to a different provider or check your billing status.');
+          throw new Error('Cuota de OpenAI excedida. Considera cambiar a un proveedor diferente o verifica tu estado de facturación.');
         }
       }
       throw error;
@@ -250,11 +250,11 @@ IMPORTANT: Return a valid JSON object only, with no markdown formatting or backt
         console.error('Google AI API Error:', errorText);
         
         if (response.status === 403) {
-          throw new Error('Invalid API key or insufficient permissions. Please verify your API key at https://makersuite.google.com/app/apikey');
+          throw new Error('Clave API inválida o permisos insuficientes. Por favor verifica tu clave API en https://makersuite.google.com/app/apikey');
         } else if (response.status === 429) {
-          throw new Error('API quota exceeded. Please check your quota in the Google Cloud Console');
+          throw new Error('Cuota de API excedida. Por favor verifica tu cuota en Google Cloud Console');
         } else {
-          throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+          throw new Error(`Llamada a API falló: ${response.status} ${response.statusText}`);
         }
       }
 
@@ -267,8 +267,8 @@ IMPORTANT: Return a valid JSON object only, with no markdown formatting or backt
         console.log('Cleaned JSON response:', cleanedJson);
         return JSON.parse(cleanedJson);
       } catch (parseError) {
-        console.error('Failed to parse Google AI response:', text);
-        throw new Error('Invalid response format from Google AI - not a valid JSON');
+        console.error('Error al analizar respuesta de Google AI:', text);
+        throw new Error('Formato de respuesta inválido de Google AI - no es un JSON válido');
       }
     } catch (error: any) {
       console.error('Google AI Error details:', error);
@@ -335,11 +335,11 @@ IMPORTANT: Return a valid JSON object only, with no markdown formatting or backt
         console.error('Google AI API Error:', errorText);
         
         if (response.status === 403) {
-          throw new Error('Invalid API key or insufficient permissions. Please verify your API key at https://makersuite.google.com/app/apikey');
+          throw new Error('Clave API inválida o permisos insuficientes. Por favor verifica tu clave API en https://makersuite.google.com/app/apikey');
         } else if (response.status === 429) {
-          throw new Error('API quota exceeded. Please check your quota in the Google Cloud Console');
+          throw new Error('Cuota de API excedida. Por favor verifica tu cuota en Google Cloud Console');
         } else {
-          throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+          throw new Error(`Llamada a API falló: ${response.status} ${response.statusText}`);
         }
       }
 
@@ -359,8 +359,8 @@ IMPORTANT: Return a valid JSON object only, with no markdown formatting or backt
           portuguese: parsedResult.portuguese || {}
         };
       } catch (parseError) {
-        console.error('Failed to parse Google AI response:', text);
-        throw new Error('Invalid response format from Google AI - not a valid JSON');
+        console.error('Error al analizar respuesta de Google AI:', text);
+        throw new Error('Formato de respuesta inválido de Google AI - no es un JSON válido');
       }
     } catch (error: any) {
       console.error('Google AI Error details:', error);

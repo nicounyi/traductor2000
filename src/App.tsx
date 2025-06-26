@@ -16,8 +16,10 @@ import {
   Grid,
   Tabs,
   Tab,
+  Snackbar,
 } from '@mui/material'
 import InfoIcon from '@mui/icons-material/Info'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { AVAILABLE_MODELS } from './services/translationProviders'
 import { extractMultiLanguageTranslations } from './services/translationService'
 import type { MultiLanguageTranslations } from './services/translationProviders'
@@ -32,18 +34,24 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModel, setSelectedModel] = useState(defaultModel.id)
   const [activeTab, setActiveTab] = useState(0)
+  const [copyNotification, setCopyNotification] = useState<string | null>(null)
 
   const selectedProvider = AVAILABLE_MODELS.find(m => m.id === selectedModel)?.provider || 'google'
   const apiKey = selectedProvider === 'openai' ? import.meta.env.VITE_OPENAI_API_KEY : import.meta.env.VITE_GEMINI_API_KEY
 
   const handleTranslate = async () => {
     if (!apiKey) {
-      setError(`${selectedProvider === 'openai' ? 'OpenAI' : 'Google AI'} API Key not found in environment variables`)
+      setError(`Clave API de ${selectedProvider === 'openai' ? 'OpenAI' : 'Google AI'} no encontrada en las variables de entorno`)
       return
     }
 
     if (!html.trim()) {
-      setError('HTML input is required')
+      setError('El HTML de entrada es requerido')
+      return
+    }
+
+    if (!prefix.trim()) {
+      setError('El prefijo de clave de traducción es requerido')
       return
     }
 
@@ -55,14 +63,14 @@ function App() {
       const multiLanguageTranslations = await extractMultiLanguageTranslations(html, prefix, apiKey, selectedModel)
       
       if (Object.keys(multiLanguageTranslations.spanish).length === 0) {
-        setError('No translations were generated. Please check your HTML input.')
+        setError('No se generaron traducciones. Por favor verifica tu HTML de entrada.')
         return
       }
 
       setTranslations(multiLanguageTranslations)
     } catch (error) {
-      console.error('Error processing HTML:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Error processing HTML. Please check your input and API key.'
+      console.error('Error procesando HTML:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Error procesando HTML. Por favor verifica tu entrada y clave API.'
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -80,20 +88,26 @@ function App() {
     { key: 'portuguese', label: 'Português', color: '#fff3e0' }
   ]
 
+  const handleCopyToClipboard = async (text: string, language: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyNotification(`${language} traducciones copiadas al portapapeles!`)
+    } catch (error) {
+      console.error('Error al copiar al portapapeles:', error)
+      setCopyNotification('Error al copiar al portapapeles')
+    }
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        HTML Translation Key Generator
-      </Typography>
-      
       <Box sx={{ display: 'flex', gap: 2, mb: 4, flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
           <FormControl fullWidth>
-            <InputLabel id="model-select-label">AI Model</InputLabel>
+            <InputLabel id="model-select-label">Modelo de IA</InputLabel>
             <Select
               labelId="model-select-label"
               value={selectedModel}
-              label="AI Model"
+              label="Modelo de IA"
               onChange={(e) => setSelectedModel(e.target.value)}
             >
               {AVAILABLE_MODELS.map((model) => (
@@ -122,11 +136,13 @@ function App() {
         </Box>
 
         <TextField
-          label="Translation Key Prefix"
+          label="Prefijo de Clave de Traducción"
           value={prefix}
           onChange={(e) => setPrefix(e.target.value)}
-          placeholder="e.g., DEBFRONT.HTML.STYLEGUIDE.TEMPLATES.DASH.REVIEW"
+          placeholder="ej., DEBFRONT.HTML.STYLEGUIDE.TEMPLATES.DASH.REVIEW"
           fullWidth
+          error={!prefix.trim()}
+          helperText={!prefix.trim() ? "El prefijo de clave de traducción es requerido" : ""}
         />
       </Box>
 
@@ -146,11 +162,11 @@ function App() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Check Billing
+                Verificar Facturación
               </Button>
             ) : error.includes('rate limit') ? (
               <Typography variant="caption" sx={{ display: 'inline-block', ml: 2 }}>
-                Try again in a minute or switch provider
+                Intenta de nuevo en un minuto o cambia de proveedor
               </Typography>
             ) : null
           }
@@ -165,7 +181,7 @@ function App() {
 
       <Paper sx={{ p: 2, mb: 4 }}>
         <TextField
-          label="Input HTML"
+          label="HTML de Entrada"
           multiline
           rows={10}
           value={html}
@@ -173,22 +189,22 @@ function App() {
           fullWidth
           sx={{ mb: 2 }}
           error={!html.trim()}
-          helperText={!html.trim() ? "HTML input is required" : ""}
+          helperText={!html.trim() ? "El HTML de entrada es requerido" : ""}
         />
         
         <Button 
           variant="contained" 
           onClick={handleTranslate}
-          disabled={!html.trim() || !apiKey || isLoading}
+          disabled={!html.trim() || !prefix.trim() || !apiKey || isLoading}
           sx={{ mb: 2 }}
         >
-          {isLoading ? 'Processing...' : 'Generate Multi-Language Translations'}
+          {isLoading ? 'Procesando...' : '¡Tradúcime Esta!'}
         </Button>
 
         {translations && (
           <Box sx={{ mt: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Generated Translations
+              Traducciones Generadas
             </Typography>
             <Tabs 
               value={activeTab} 
@@ -213,27 +229,57 @@ function App() {
                 }}
               >
                 {activeTab === index && (
-                  <TextField
-                    label={`${lang.label} Translations`}
-                    multiline
-                    rows={15}
-                    value={formatTranslations(translations[lang.key as keyof MultiLanguageTranslations])}
-                    fullWidth
-                    InputProps={{
-                      readOnly: true,
-                    }}
-                    sx={{
-                      '& .MuiInputBase-root': {
-                        backgroundColor: 'white',
-                      }
-                    }}
-                  />
+                  <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" component="h3">
+                        Traducciones en {lang.label}
+                      </Typography>
+                      <Tooltip title={`Copiar traducciones en ${lang.label} al portapapeles`}>
+                        <IconButton
+                          onClick={() => handleCopyToClipboard(
+                            formatTranslations(translations[lang.key as keyof MultiLanguageTranslations]),
+                            lang.label
+                          )}
+                          sx={{ 
+                            backgroundColor: 'white',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5'
+                            }
+                          }}
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    <TextField
+                      multiline
+                      rows={15}
+                      value={formatTranslations(translations[lang.key as keyof MultiLanguageTranslations])}
+                      fullWidth
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          backgroundColor: 'white',
+                        }
+                      }}
+                    />
+                  </Box>
                 )}
               </Box>
             ))}
           </Box>
         )}
       </Paper>
+      
+      <Snackbar
+        open={!!copyNotification}
+        autoHideDuration={3000}
+        onClose={() => setCopyNotification(null)}
+        message={copyNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   )
 }
