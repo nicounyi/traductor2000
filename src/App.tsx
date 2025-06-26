@@ -198,7 +198,7 @@ function App() {
           disabled={!html.trim() || !prefix.trim() || !apiKey || isLoading}
           sx={{ mb: 2 }}
         >
-          {isLoading ? 'Procesando...' : '¡Tradúcime Esta!'}
+          {isLoading ? 'Procesando...' : '¡Traducime Esta!'}
         </Button>
 
         {translations && (
