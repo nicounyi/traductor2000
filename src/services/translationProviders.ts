@@ -14,6 +14,12 @@ export interface AIModel {
   provider: string;
 }
 
+// Función utilitaria para limpiar expresiones de AngularJS
+export const cleanAngularExpressions = (html: string): string => {
+  // Remover expresiones de AngularJS que están entre {{ }}
+  return html.replace(/\{\{[^}]*\}\}/g, '');
+};
+
 export const AVAILABLE_MODELS: AIModel[] = [
   {
     id: "gpt-3.5-turbo",
@@ -63,7 +69,9 @@ export class OpenAIProvider implements TranslationProvider {
 
   async translateText(html: string, prefix: string, modelId: string = "gpt-3.5-turbo"): Promise<{ [key: string]: string }> {
     try {
-      const cleanHtml = html.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      // Limpiar expresiones de AngularJS antes de procesar
+      const htmlWithoutAngular = cleanAngularExpressions(html);
+      const cleanHtml = htmlWithoutAngular.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
       const selectedModel = AVAILABLE_MODELS.find(m => m.id === modelId) || AVAILABLE_MODELS[0];
 
       const response = await this.openai.chat.completions.create({
@@ -75,11 +83,13 @@ export class OpenAIProvider implements TranslationProvider {
 1. Extract all human-readable text from the HTML
 2. Generate an appropriate translation key in SCREAMING_SNAKE_CASE
 3. Translate the text to English
-4. Return a JSON object where each key follows the pattern: "${prefix}.KEY_NAME"`
+4. Return a JSON object where each key follows the pattern: "${prefix}.KEY_NAME" and the value is the English translation
+
+IMPORTANT: Only return the translated text as values, do not include the original text or create duplicate keys with "_TRANSLATION" suffix.`
           },
           {
             role: "user",
-            content: `Extract text, generate keys and translate this HTML: ${cleanHtml}`
+            content: `Extract text, generate keys and translate this HTML to English: ${cleanHtml}`
           }
         ],
         temperature: 0.1,
@@ -123,7 +133,9 @@ export class GoogleAIProvider implements TranslationProvider {
 
   async translateText(html: string, prefix: string): Promise<{ [key: string]: string }> {
     try {
-      const cleanHtml = html.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      // Limpiar expresiones de AngularJS antes de procesar
+      const htmlWithoutAngular = cleanAngularExpressions(html);
+      const cleanHtml = htmlWithoutAngular.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`,
@@ -141,7 +153,7 @@ export class GoogleAIProvider implements TranslationProvider {
 1. Extract all human-readable text from the HTML
 2. Generate an appropriate translation key in SCREAMING_SNAKE_CASE
 3. Translate the text to English
-4. Return a JSON object where each key follows the pattern: "${prefix}.KEY_NAME"
+4. Return a JSON object where each key follows the pattern: "${prefix}.KEY_NAME" and the value is the English translation
 
 Rules for key generation:
 - Use semantic names that represent the content's meaning
@@ -150,6 +162,8 @@ Rules for key generation:
 - Use PLACEHOLDER for input placeholders
 - Use THANKS for thank you messages
 - Keep keys concise but meaningful
+
+IMPORTANT: Only return the translated text as values, do not include the original text or create duplicate keys with "_TRANSLATION" suffix.
 
 Input HTML: ${cleanHtml}
 
