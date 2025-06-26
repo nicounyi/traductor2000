@@ -4,6 +4,14 @@ export interface TranslationProvider {
   name: string;
   description: string;
   translateText(html: string, prefix: string, modelId?: string): Promise<{ [key: string]: string }>;
+  translateTextMultiLanguage(html: string, prefix: string, languages: string[], modelId?: string): Promise<MultiLanguageTranslations>;
+}
+
+export interface MultiLanguageTranslations {
+  spanish: { [key: string]: string };
+  english: { [key: string]: string };
+  french: { [key: string]: string };
+  portuguese: { [key: string]: string };
 }
 
 export interface AIModel {
@@ -111,6 +119,67 @@ IMPORTANT: Only return the translated text as values, do not include the origina
       throw error;
     }
   }
+
+  async translateTextMultiLanguage(html: string, prefix: string, languages: string[], modelId?: string): Promise<MultiLanguageTranslations> {
+    try {
+      // Limpiar expresiones de AngularJS antes de procesar
+      const htmlWithoutAngular = cleanAngularExpressions(html);
+      const cleanHtml = htmlWithoutAngular.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      const selectedModel = AVAILABLE_MODELS.find(m => m.id === modelId) || AVAILABLE_MODELS[0];
+
+      const response = await this.openai.chat.completions.create({
+        model: selectedModel.id,
+        messages: [
+          {
+            role: "system",
+            content: `You are an HTML text extractor and translator. Your task is to:
+1. Extract all human-readable text from the HTML
+2. Generate an appropriate translation key in SCREAMING_SNAKE_CASE
+3. Translate the text to Spanish, English, French, and Portuguese
+4. Return a JSON object with the following structure:
+{
+  "spanish": { "KEY_NAME": "Spanish translation" },
+  "english": { "KEY_NAME": "English translation" },
+  "french": { "KEY_NAME": "French translation" },
+  "portuguese": { "KEY_NAME": "Portuguese translation" }
+}
+
+IMPORTANT: 
+- Only return the translated text as values, do not include the original text
+- Use the same keys across all languages
+- Each key should follow the pattern: "${prefix}.KEY_NAME"`
+          },
+          {
+            role: "user",
+            content: `Extract text, generate keys and translate this HTML to Spanish, English, French, and Portuguese: ${cleanHtml}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: Math.min(selectedModel.maxTokens, 8000),
+        response_format: { type: "json_object" }
+      });
+
+      const result = response.choices[0].message.content?.trim() || '{}';
+      const parsedResult = JSON.parse(result);
+      
+      return {
+        spanish: parsedResult.spanish || {},
+        english: parsedResult.english || {},
+        french: parsedResult.french || {},
+        portuguese: parsedResult.portuguese || {}
+      };
+    } catch (error: any) {
+      if (error?.status === 429) {
+        const isRateLimit = error.message?.toLowerCase().includes('rate limit');
+        if (isRateLimit) {
+          throw new Error('OpenAI rate limit exceeded. Try again in a minute or switch to a different provider.');
+        } else {
+          throw new Error('OpenAI quota exceeded. Consider switching to a different provider or check your billing status.');
+        }
+      }
+      throw error;
+    }
+  }
 }
 
 export class GoogleAIProvider implements TranslationProvider {
@@ -197,6 +266,98 @@ IMPORTANT: Return a valid JSON object only, with no markdown formatting or backt
         const cleanedJson = this.cleanJsonResponse(text);
         console.log('Cleaned JSON response:', cleanedJson);
         return JSON.parse(cleanedJson);
+      } catch (parseError) {
+        console.error('Failed to parse Google AI response:', text);
+        throw new Error('Invalid response format from Google AI - not a valid JSON');
+      }
+    } catch (error: any) {
+      console.error('Google AI Error details:', error);
+      throw error;
+    }
+  }
+
+  async translateTextMultiLanguage(html: string, prefix: string, languages: string[], modelId?: string): Promise<MultiLanguageTranslations> {
+    try {
+      // Limpiar expresiones de AngularJS antes de procesar
+      const htmlWithoutAngular = cleanAngularExpressions(html);
+      const cleanHtml = htmlWithoutAngular.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `You are an HTML text extractor and translator. Your task is to:
+1. Extract all human-readable text from the HTML
+2. Generate an appropriate translation key in SCREAMING_SNAKE_CASE
+3. Translate the text to Spanish, English, French, and Portuguese
+4. Return a JSON object with the following structure:
+{
+  "spanish": { "KEY_NAME": "Spanish translation" },
+  "english": { "KEY_NAME": "English translation" },
+  "french": { "KEY_NAME": "French translation" },
+  "portuguese": { "KEY_NAME": "Portuguese translation" }
+}
+
+Rules for key generation:
+- Use semantic names that represent the content's meaning
+- Use common patterns like STEP1_TITLE, STEP2_TITLE for sequential items
+- Use NOT_SATISFIED, VERY_SATISFIED for ratings
+- Use PLACEHOLDER for input placeholders
+- Use THANKS for thank you messages
+- Keep keys concise but meaningful
+
+IMPORTANT: 
+- Only return the translated text as values, do not include the original text
+- Use the same keys across all languages
+- Each key should follow the pattern: "${prefix}.KEY_NAME"
+
+Input HTML: ${cleanHtml}
+
+IMPORTANT: Return a valid JSON object only, with no markdown formatting or backticks.`
+                  }
+                ]
+              }
+            ]
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Google AI API Error:', errorText);
+        
+        if (response.status === 403) {
+          throw new Error('Invalid API key or insufficient permissions. Please verify your API key at https://makersuite.google.com/app/apikey');
+        } else if (response.status === 429) {
+          throw new Error('API quota exceeded. Please check your quota in the Google Cloud Console');
+        } else {
+          throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const result = await response.json();
+      const text = result.candidates[0].content.parts[0].text;
+      
+      try {
+        // Clean the response and try to parse it
+        const cleanedJson = this.cleanJsonResponse(text);
+        console.log('Cleaned JSON response:', cleanedJson);
+        const parsedResult = JSON.parse(cleanedJson);
+        
+        return {
+          spanish: parsedResult.spanish || {},
+          english: parsedResult.english || {},
+          french: parsedResult.french || {},
+          portuguese: parsedResult.portuguese || {}
+        };
       } catch (parseError) {
         console.error('Failed to parse Google AI response:', text);
         throw new Error('Invalid response format from Google AI - not a valid JSON');
